@@ -1,0 +1,61 @@
+﻿from pathlib import Path
+indent = " " * 32
+block_lines = [
+    f"{indent}# Genel 80/20 Analizi - Tüm Ürünler",
+    f"{indent}st.divider()",
+    f"{indent}render_section_heading(\"Genel Pareto Analizi (80/20) - Tüm Ürünler\", icon=\"📈\")",
+    "",
+    f"{indent}all_products_sorted = all_df.sort_values('Genel Toplam', ascending=False).copy()",
+    "",
+    f"{indent}if not all_products_sorted.empty:",
+    f"{indent}    total_all_products = all_products_sorted['Genel Toplam'].sum()",
+    f"{indent}    if total_all_products > 0:",
+    f"{indent}        all_products_sorted['Kümülatif %'] = (all_products_sorted['Genel Toplam'].cumsum() / total_all_products * 100).round(2)",
+    f"{indent}    else:",
+    f"{indent}        all_products_sorted['Kümülatif %'] = 0",
+    "",
+    f"{indent}    top_20_products = all_products_sorted.head(20).copy()",
+    f"{indent}    render_subsection_heading(\"En Yüksek Maliyetli İlk 20 Ürün\", icon=\"🏆\")",
+    "",
+    f"{indent}    for rank, item in enumerate(top_20_products.to_dict('records'), start=1):",
+    f"{indent}        formatted_total = format_currency(item.get('Genel Toplam', 0))",
+    f"{indent}        kum_value = item.get('Kümülatif %', 0)",
+    f"{indent}        kum_percent = f\"{float(kum_value):.2f}%\" if isinstance(kum_value, (int, float)) and not pd.isna(kum_value) else escape(str(kum_value))",
+    f"{indent}        description = escape(str(item.get('Ürün Açıklaması', '')))",
+    f"{indent}        group_label = escape(str(item.get('Ürün Grubu', '')))",
+    f"{indent}        page_label = escape(str(item.get('Sayfa', '')))",
+    f"{indent}        row_label = escape(str(item.get('Satır', '')))",
+    "",
+    f"{indent}        st.markdown(",
+    f"{indent}            f\"\"\"",
+    f"{indent}<div style=\\\"background-color:#0ea5e910; border-left:6px solid #0ea5e9; padding:12px 16px; border-radius:10px; margin-bottom:12px;\\\">",
+    f"{indent}  <div style=\\\"font-weight:700; font-size:16px; color:#111827;\\\">{rank}. {description}</div>",
+    f"{indent}  <div style=\\\"font-size:13px; color:#374151; margin-top:6px;\\\">",
+    f"{indent}    <strong>Genel Toplam:</strong> {formatted_total} &middot; <strong>Kümülatif %:</strong> {kum_percent}",
+    f"{indent}  </div>",
+    f"{indent}  <div style=\\\"font-size:12px; color:#4b5563; margin-top:4px;\\\">",
+    f"{indent}    <strong>Grup:</strong> {group_label} &middot; <strong>Sayfa:</strong> {page_label} &middot; <strong>Satır:</strong> {row_label}",
+    f"{indent}  </div>",
+    f"{indent}</div>",
+    f'{indent}\"\"\"',
+    f"{indent}            unsafe_allow_html=True,",
+    f"{indent}        )",
+    "",
+    f"{indent}    items_80_percent_all = len(all_products_sorted[all_products_sorted['Kümülatif %'] <= 80])",
+    f"{indent}    if items_80_percent_all > 0:",
+    f"{indent}        st.info(f\" **80/20 Analizi:** Toplam maliyetin %80'i **{items_80_percent_all} ürün** tarafından oluşturuluyor. (Toplam {len(all_products_sorted)} ürün)\")",
+    f"{indent}    else:",
+    f"{indent}        st.info(\" **80/20 Analizi:** İlk ürün zaten %80'in üzerinde maliyet oluşturuyor.\")",
+    f"{indent}else:",
+    f"{indent}    st.info(\"Genel maliyet verisi bulunamadı.\")",
+    "",
+    f"{indent}# Ürün grubu detay analizi",
+    f"{indent}st.divider()",
+    f"{indent}render_section_heading(\"Ürün Grubu Detay Analizi\", icon=\"🔍\")"
+]
+path = Path("excel_analyzer.py")
+lines = path.read_text(encoding='utf-8').splitlines()
+start = next(i for i,line in enumerate(lines) if line.strip().startswith('# Genel 80/20 Analizi'))
+end = next(i for i,line in enumerate(lines) if line.strip().startswith('# Ürün grubu detay analizi'))
+new_lines = lines[:start] + block_lines + lines[end+1:]
+path.write_text('\n'.join(new_lines) + '\n', encoding='utf-8')
