@@ -25,8 +25,19 @@ echo Streamlit baslatiliyor...
 echo Tarayici otomatik acilacak (2-3 saniye bekleyin)
 echo.
 
+REM Port'u temizle
+echo Port kontrol ediliyor...
+netstat -aon | findstr :8501 >nul
+if not errorlevel 1 (
+    echo Port 8501 mesgul, alternatif port 8503 kullaniliyor...
+    set STREAMLIT_PORT=8503
+) else (
+    set STREAMLIT_PORT=8501
+)
+
 REM Streamlit uygulamasini baslat
-streamlit run excel_analyzer.py --server.headless false --server.runOnSave true --server.port 8501
+echo Streamlit port %STREAMLIT_PORT% ile baslatiliyor...
+streamlit run excel_analyzer.py --server.headless false --server.runOnSave true --server.port %STREAMLIT_PORT%
 
 if errorlevel 1 (
     echo.
