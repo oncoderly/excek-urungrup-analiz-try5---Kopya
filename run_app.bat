@@ -21,8 +21,19 @@ echo.
 REM Sanal ortami etkinlestir
 call venv\Scripts\activate.bat
 
+echo Streamlit baslatiliyor...
+echo Tarayici otomatik acilacak (2-3 saniye bekleyin)
+echo.
+
 REM Streamlit uygulamasini baslat
-streamlit run excel_analyzer.py --server.headless true --server.runOnSave true
+streamlit run excel_analyzer.py --server.headless false --server.runOnSave true --server.port 8501
+
+if errorlevel 1 (
+    echo.
+    echo HATA: Streamlit baslatilirken sorun olustu!
+    echo.
+    pause
+)
 
 echo.
 echo Uygulama kapatildi.
