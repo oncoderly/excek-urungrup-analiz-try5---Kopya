@@ -1,6 +1,6 @@
 streamlit
-pandas
+pandas<2.0.0
 numpy
 plotly
 openpyxl
-streamlit-aggrid==0.3.3
+streamlit-aggrid==0.3.4
