@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python:*)",
       "Bash(.venvScriptsactivate)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
