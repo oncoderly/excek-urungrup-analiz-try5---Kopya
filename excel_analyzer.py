@@ -3,7 +3,14 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from html import escape
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+
+# st-aggrid'i güvenli şekilde import et
+try:
+    from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+    HAS_AGGRID = True
+except ImportError:
+    HAS_AGGRID = False
+    st.error("⚠️ st-aggrid yüklenemedi. Lütfen requirements.txt'i kontrol edin.")
 
 st.set_page_config(page_title="Excel Analiz Uygulaması", layout="wide")
 
