@@ -10,7 +10,6 @@ try:
     HAS_AGGRID = True
 except ImportError:
     HAS_AGGRID = False
-    st.error("⚠️ st-aggrid yüklenemedi. Lütfen requirements.txt'i kontrol edin.")
 
 st.set_page_config(page_title="Excel Analiz Uygulaması", layout="wide")
 

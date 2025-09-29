@@ -1,0 +1,25 @@
+# Alternatif st-aggrid sürümleri - hangisi çalışıyorsa onu kullan
+
+# Seçenek 1: En son stabil
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+streamlit-aggrid==0.3.3
+
+# Seçenek 2: Daha eski stabil
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+streamlit-aggrid==0.2.3
+
+# Seçenek 3: En eski bilinen çalışan
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+streamlit-aggrid==0.2.0
