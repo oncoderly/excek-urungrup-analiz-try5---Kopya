@@ -573,42 +573,38 @@ st.markdown("""
 PRICE_COLUMNS = ['Malzeme Fiyatı', 'İşçilik Fiyatı', 'GGK Fiyatı', 'Genel Toplam']
 
 def create_aggrid_table(dataframe, height=400, selection_mode='single', fit_columns_on_grid_load=True):
-    """Render AgGrid table with modern design - resize and reorder enabled, search and filter disabled."""
+    """Render dataframe table with modern design - using st.dataframe for compatibility."""
 
-    # CSS stillerini ekle
+    # CSS stillerini dataframe için optimize et
     st.markdown("""
     <style>
-    /* AgGrid tablosu için güçlü CSS override */
-    div[data-testid="stDataFrame"] .ag-theme-material,
-    .ag-theme-material {
+    /* Modern dataframe stilleri */
+    div[data-testid="stDataFrame"] {
         font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
         border-radius: 16px !important;
         overflow: hidden !important;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+        border: 3px solid #8b5cf6 !important;
     }
 
-    /* Başlık stilleri - MOR TEMA */
-    div[data-testid="stDataFrame"] .ag-header,
-    .ag-theme-material .ag-header {
+    div[data-testid="stDataFrame"] table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+    }
+
+    div[data-testid="stDataFrame"] th {
         background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%) !important;
-        box-shadow: 0 4px 12px rgba(124,58,237,0.3) !important;
-    }
-
-    div[data-testid="stDataFrame"] .ag-header-cell,
-    .ag-theme-material .ag-header-cell {
-        background: transparent !important;
         color: #ffffff !important;
         font-weight: 800 !important;
         font-size: 15px !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
-        border-right: 2px solid rgba(255,255,255,0.2) !important;
+        padding: 12px 16px !important;
         text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+        border-right: 2px solid rgba(255,255,255,0.2) !important;
     }
 
-    /* Hücre stilleri */
-    div[data-testid="stDataFrame"] .ag-cell,
-    .ag-theme-material .ag-cell {
+    div[data-testid="stDataFrame"] td {
         font-family: 'Segoe UI', 'Inter', sans-serif !important;
         font-weight: 600 !important;
         font-size: 14px !important;
@@ -618,76 +614,23 @@ def create_aggrid_table(dataframe, height=400, selection_mode='single', fit_colu
         text-align: center !important;
     }
 
-    /* Satır stilleri */
-    div[data-testid="stDataFrame"] .ag-row:nth-child(even) .ag-cell,
-    .ag-theme-material .ag-row:nth-child(even) .ag-cell {
+    div[data-testid="stDataFrame"] tr:nth-child(even) td {
         background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
     }
 
-    div[data-testid="stDataFrame"] .ag-row:hover .ag-cell,
-    .ag-theme-material .ag-row:hover .ag-cell {
-        background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-        transform: scale(1.01) !important;
+    div[data-testid="stDataFrame"] tr:nth-child(odd) td {
+        background: #ffffff !important;
+    }
+
+    div[data-testid="stDataFrame"] tr:hover td {
+        background: linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
         transition: all 0.2s ease !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    gb = GridOptionsBuilder.from_dataframe(dataframe)
-    gb.configure_default_column(
-        resizable=True,
-        sortable=False,
-        filter=False,
-        floatingFilter=False,
-        headerTooltip=True
-    )
-
-    # Kolon-specific styling
-    for col in dataframe.columns:
-        if 'Malzeme' in col:
-            gb.configure_column(col,
-            cellStyle={'background-color': '#dcfce7', 'color': '#15803d', 'font-weight': '700'},
-            headerClass='malzeme-header'
-            )
-        elif 'İşçilik' in col:
-            gb.configure_column(col,
-            cellStyle={'background-color': '#dbeafe', 'color': '#1d4ed8', 'font-weight': '700'},
-            headerClass='iscilik-header'
-            )
-        elif 'Genel Toplam' in col or 'Kümülatif' in col:
-            gb.configure_column(col,
-            cellStyle={'background-color': '#fecaca', 'color': '#dc2626', 'font-weight': '800', 'font-size': '15px'},
-            headerClass='toplam-header'
-            )
-        elif 'GGK' in col:
-            gb.configure_column(col,
-            cellStyle={'background-color': '#e9d5ff', 'color': '#7c3aed', 'font-weight': '700'},
-            headerClass='ggk-header'
-            )
-        elif 'Ürün Grubu' in col:
-            gb.configure_column(col,
-            cellStyle={'background-color': '#f3f4f6', 'color': '#374151', 'font-weight': '800'},
-            headerClass='grup-header'
-            )
-
-    use_checkbox = selection_mode in ("multiple", "checkbox")
-    gb.configure_selection(selection_mode, use_checkbox=use_checkbox)
-    gb.configure_grid_options(
-        suppressMovableColumns=False,
-        enableRangeSelection=False
-    )
-    grid_options = gb.build()
-
-    return AgGrid(
-        dataframe,
-        gridOptions=grid_options,
-        update_mode=GridUpdateMode.NO_UPDATE,
-        data_return_mode=DataReturnMode.AS_INPUT,
-        height=height,
-        fit_columns_on_grid_load=fit_columns_on_grid_load,
-        allow_unsafe_jscode=False,
-        theme='material'
-    )
+    # st.dataframe kullanarak tabloyu göster
+    return st.dataframe(dataframe, height=height, use_container_width=True)
 
 
 def render_section_heading(title: str, icon: str = "") -> None:

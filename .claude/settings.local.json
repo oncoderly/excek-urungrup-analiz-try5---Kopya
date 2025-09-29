@@ -5,7 +5,8 @@
       "Bash(.venvScriptsactivate)",
       "Bash(powershell:*)",
       "Bash(dir:*)",
-      "Bash(where python)"
+      "Bash(where python)",
+      "Bash(streamlit --version)"
     ],
     "deny": [],
     "ask": []
