@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(.venvScriptsactivate)",
       "Bash(powershell:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(where python)"
     ],
     "deny": [],
     "ask": []
