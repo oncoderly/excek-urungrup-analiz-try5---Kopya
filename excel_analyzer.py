@@ -573,64 +573,181 @@ st.markdown("""
 PRICE_COLUMNS = ['Malzeme Fiyatı', 'İşçilik Fiyatı', 'GGK Fiyatı', 'Genel Toplam']
 
 def create_aggrid_table(dataframe, height=400, selection_mode='single', fit_columns_on_grid_load=True):
-    """Render dataframe table with modern design - using st.dataframe for compatibility."""
+    """Render dataframe table with modern design and column-specific styling."""
 
-    # CSS stillerini dataframe için optimize et
+    # Sütun tabanlı styling için dataframe'i styled DataFrame'e çevir
+    def style_dataframe(df):
+        """Apply column-specific styling to dataframe"""
+
+        def apply_column_styles(styler):
+            # Malzeme sütunları - Yeşil
+            malzeme_cols = [col for col in df.columns if 'Malzeme' in str(col)]
+            for col in malzeme_cols:
+                styler = styler.map(lambda x: 'background-color: #dcfce7; color: #15803d; font-weight: 700', subset=[col])
+
+            # İşçilik sütunları - Mavi
+            iscilik_cols = [col for col in df.columns if 'İşçilik' in str(col)]
+            for col in iscilik_cols:
+                styler = styler.map(lambda x: 'background-color: #dbeafe; color: #1d4ed8; font-weight: 700', subset=[col])
+
+            # GGK sütunları - Mor
+            ggk_cols = [col for col in df.columns if 'GGK' in str(col)]
+            for col in ggk_cols:
+                styler = styler.map(lambda x: 'background-color: #e9d5ff; color: #7c3aed; font-weight: 700', subset=[col])
+
+            # Genel Toplam ve Kümülatif sütunları - Kırmızı
+            toplam_cols = [col for col in df.columns if 'Genel Toplam' in str(col) or 'Kümülatif' in str(col)]
+            for col in toplam_cols:
+                styler = styler.map(lambda x: 'background-color: #fecaca; color: #dc2626; font-weight: 800; font-size: 15px', subset=[col])
+
+            # Ürün Grubu sütunları - Gri
+            grup_cols = [col for col in df.columns if 'Ürün Grubu' in str(col)]
+            for col in grup_cols:
+                styler = styler.map(lambda x: 'background-color: #f3f4f6; color: #374151; font-weight: 800', subset=[col])
+
+            return styler
+
+        return df.style.pipe(apply_column_styles)
+
+    # CSS stillerini dataframe için optimize et - Mor çerçeve ve büyük yazılar
     st.markdown("""
     <style>
-    /* Modern dataframe stilleri */
-    div[data-testid="stDataFrame"] {
+    /* MOR ÇERÇEVE - Görüntüdeki gibi */
+    .stDataFrame, .stDataFrame > div, .stDataFrame div[data-testid="stDataFrame"] {
         font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        border-radius: 20px !important;
+        overflow: hidden !important;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.2) !important;
+        border: 6px solid #8b5cf6 !important;
+        background: linear-gradient(145deg, #f8fafc 0%, #ffffff 100%) !important;
+        margin: 15px 0 !important;
+        padding: 8px !important;
+    }
+
+    /* İÇ TABLO ÇERÇEVE - Mor gradient */
+    .stDataFrame table,
+    div[data-testid="stDataFrame"] table {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        width: 100% !important;
+        font-family: 'Segoe UI', 'Inter', sans-serif !important;
+        border: 4px solid #a855f7 !important;
         border-radius: 16px !important;
         overflow: hidden !important;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
-        border: 3px solid #8b5cf6 !important;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
     }
 
-    div[data-testid="stDataFrame"] table {
-        border-collapse: collapse !important;
-        width: 100% !important;
+    .stDataFrame tbody,
+    .stDataFrame thead {
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
     }
 
-    div[data-testid="stDataFrame"] th {
-        background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%) !important;
+    /* BAŞLIK STİLLERİ - ÇOK DAHA KALIN VE BÜYÜK (%15 artış) */
+    .stDataFrame th,
+    .stDataFrame thead th,
+    div[data-testid="stDataFrame"] th,
+    div[data-testid="stDataFrame"] thead th,
+    .stDataFrame table thead tr th {
+        background: linear-gradient(135deg, #581c87 0%, #7c3aed 25%, #a855f7 75%, #c084fc 100%) !important;
         color: #ffffff !important;
-        font-weight: 800 !important;
-        font-size: 15px !important;
+        font-weight: 950 !important;
+        font-size: 21px !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.5px !important;
-        padding: 12px 16px !important;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-        border-right: 2px solid rgba(255,255,255,0.2) !important;
-    }
-
-    div[data-testid="stDataFrame"] td {
-        font-family: 'Segoe UI', 'Inter', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 14px !important;
-        padding: 12px 16px !important;
-        border-right: 1px solid #e5e7eb !important;
-        border-bottom: 1px solid #e5e7eb !important;
+        letter-spacing: 1.5px !important;
+        padding: 22px 24px !important;
+        text-shadow: 0 4px 8px rgba(0,0,0,0.5) !important;
+        border-right: 4px solid rgba(255,255,255,0.4) !important;
+        border-bottom: 4px solid rgba(255,255,255,0.4) !important;
         text-align: center !important;
+        vertical-align: middle !important;
+        line-height: 1.1 !important;
+        min-height: 70px !important;
+        height: 70px !important;
+        font-stretch: expanded !important;
+        text-stroke: 1px rgba(0,0,0,0.2) !important;
+        -webkit-text-stroke: 1px rgba(0,0,0,0.2) !important;
     }
 
-    div[data-testid="stDataFrame"] tr:nth-child(even) td {
-        background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+    /* VERİ HÜCRELERİ - %15 BÜYÜK YAZILLAR */
+    .stDataFrame td,
+    .stDataFrame tbody td,
+    div[data-testid="stDataFrame"] td,
+    div[data-testid="stDataFrame"] tbody td,
+    .stDataFrame table tbody tr td {
+        font-family: 'Segoe UI', 'Inter', sans-serif !important;
+        font-weight: 750 !important;
+        font-size: 18.4px !important;
+        padding: 18px 24px !important;
+        border-right: 2px solid #e5e7eb !important;
+        border-bottom: 2px solid #e5e7eb !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        line-height: 1.3 !important;
+        min-height: 58px !important;
     }
 
-    div[data-testid="stDataFrame"] tr:nth-child(odd) td {
-        background: #ffffff !important;
+    /* Özel başlık renkleri - Malzeme */
+    .stDataFrame th:nth-child(1):contains("Malzeme"),
+    .stDataFrame th[title*="Malzeme"],
+    .stDataFrame thead th:contains("Malzeme") {
+        background: linear-gradient(135deg, #064e3b 0%, #15803d 50%, #16a34a 100%) !important;
+        box-shadow: 0 4px 12px rgba(21,128,61,0.4) !important;
     }
 
+    /* Özel başlık renkleri - İşçilik */
+    .stDataFrame th:nth-child(2):contains("İşçilik"),
+    .stDataFrame th[title*="İşçilik"],
+    .stDataFrame thead th:contains("İşçilik") {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #2563eb 100%) !important;
+        box-shadow: 0 4px 12px rgba(29,78,216,0.4) !important;
+    }
+
+    /* Özel başlık renkleri - GGK */
+    .stDataFrame th:nth-child(3):contains("GGK"),
+    .stDataFrame th[title*="GGK"],
+    .stDataFrame thead th:contains("GGK") {
+        background: linear-gradient(135deg, #581c87 0%, #7c3aed 50%, #8b5cf6 100%) !important;
+        box-shadow: 0 4px 12px rgba(124,58,237,0.4) !important;
+    }
+
+    /* Özel başlık renkleri - Genel Toplam */
+    .stDataFrame th:nth-child(4):contains("Genel"),
+    .stDataFrame th[title*="Genel"],
+    .stDataFrame thead th:contains("Genel") {
+        background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #ef4444 100%) !important;
+        box-shadow: 0 4px 12px rgba(220,38,38,0.4) !important;
+    }
+
+    /* Hover efektleri - Daha dramatik */
+    .stDataFrame tr:hover td,
     div[data-testid="stDataFrame"] tr:hover td {
-        background: linear-gradient(135deg, #ede9fe, #ddd6fe) !important;
-        transition: all 0.2s ease !important;
+        transform: scale(1.03) !important;
+        box-shadow: 0 6px 20px rgba(124,58,237,0.2) !important;
+        transition: all 0.3s ease !important;
+        z-index: 10 !important;
+        position: relative !important;
+    }
+
+    /* Genel tablo gölgesi */
+    .stDataFrame,
+    div[data-testid="stDataFrame"] {
+        box-shadow:
+            0 20px 50px rgba(0,0,0,0.15),
+            0 10px 25px rgba(124,58,237,0.1),
+            inset 0 1px 0 rgba(255,255,255,0.1) !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # st.dataframe kullanarak tabloyu göster
-    return st.dataframe(dataframe, height=height, use_container_width=True)
+    # Styled dataframe kullanarak tabloyu göster
+    try:
+        styled_df = style_dataframe(dataframe)
+        return st.dataframe(styled_df, height=height, use_container_width=True)
+    except Exception as e:
+        # Styling hatası durumunda normal dataframe göster
+        st.warning(f"Tablo stillendirilirken hata oluştu, standart format kullanılıyor: {str(e)}")
+        return st.dataframe(dataframe, height=height, use_container_width=True)
 
 
 def render_section_heading(title: str, icon: str = "") -> None:
