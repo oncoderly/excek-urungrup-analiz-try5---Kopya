@@ -4,3 +4,5 @@ numpy
 plotly
 openpyxl
 streamlit-aggrid>=0.3.5
+reportlab
+matplotlib

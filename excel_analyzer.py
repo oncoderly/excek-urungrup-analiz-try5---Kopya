@@ -3,6 +3,17 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 from html import escape
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+import matplotlib.pyplot as plt
+from datetime import datetime
 
 # st-aggrid'i güvenli şekilde import et
 try:
@@ -112,7 +123,7 @@ st.markdown("""
 
 .ag-theme-material .ag-cell {
     font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-    font-weight: 600 !important;
+    font-weight: 800 !important;
     font-size: 15px !important;
     text-align: center !important;
     padding: 16px 18px !important;
@@ -566,6 +577,91 @@ st.markdown("""
     border-radius: 8px !important;
     color: #dc2626 !important;
 }
+
+/* Yazdırma stilleri */
+@media print {
+    /* Sidebar'ı tamamen gizle - tüm olası selector'lar */
+    section[data-testid="stSidebar"],
+    [data-testid="stSidebar"],
+    .css-1d391kg,
+    .sidebar,
+    aside,
+    nav,
+    header,
+    footer,
+    [data-testid="stHeader"],
+    [data-testid="stToolbar"],
+    .stDeployButton,
+    button,
+    [data-testid="collapsedControl"],
+    .css-1cypcdb,
+    .css-17lntkn {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        opacity: 0 !important;
+    }
+
+    /* Ana içeriği tam genişlik yap ve sola kaydır */
+    .main,
+    .main .block-container,
+    section.main > div,
+    [data-testid="stAppViewContainer"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 1rem !important;
+        margin-left: 0 !important;
+    }
+
+    /* Streamlit container'ını düzenle */
+    .appview-container {
+        margin-left: 0 !important;
+    }
+
+    /* Sayfa boyutu ve kenar boşlukları */
+    @page {
+        size: A4 landscape;
+        margin: 1cm;
+    }
+
+    /* Body'yi düzenle */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Tablo ve grafiklerin sayfa sığması */
+    .ag-theme-material,
+    div[data-testid="stDataFrame"],
+    .stPlotlyChart {
+        page-break-inside: avoid;
+        width: 100% !important;
+    }
+
+    /* Renkli arka planları koru */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Ana başlığı görünür tut */
+    .main-title {
+        display: block !important;
+        page-break-after: avoid;
+    }
+
+    /* İçerik alanını genişlet */
+    .css-18e3th9,
+    .css-1d391kg {
+        padding-left: 0 !important;
+        margin-left: 0 !important;
+    }
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -662,6 +758,301 @@ def render_subsection_heading(title: str, icon: str = "") -> None:
     display_title = f"{icon} {title}".strip() if icon else title
     st.markdown(f"<div class='subsection-title'>{display_title}</div>", unsafe_allow_html=True)
 
+def turkce_ascii(text):
+    """Türkçe karakterleri ASCII'ye çevir"""
+    if not isinstance(text, str):
+        return str(text)
+    tr_chars = {'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c',
+                'İ': 'I', 'Ğ': 'G', 'Ü': 'U', 'Ş': 'S', 'Ö': 'O', 'Ç': 'C'}
+    for tr, en in tr_chars.items():
+        text = text.replace(tr, en)
+    return text
+
+def generate_pdf_report(combined_df, selected_sheets):
+    """
+    PDF raporu oluşturur - tüm ürün gruplarının detaylı analizi
+    """
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=landscape(A4),
+                           rightMargin=1*cm, leftMargin=1*cm,
+                           topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+    # PDF elemanları
+    elements = []
+
+    # Başlık tablosu
+    title_data = [['URUN GRUPLARINA GORE MALIYET ANALIZI RAPORU']]
+    title_table = Table(title_data, colWidths=[26*cm])
+    title_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#1e40af')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 18),
+        ('TOPPADDING', (0, 0), (-1, -1), 15),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+    ]))
+    elements.append(title_table)
+
+    # Tarih
+    date_data = [[f"Rapor Tarihi: {datetime.now().strftime('%d.%m.%Y %H:%M')}"]]
+    date_table = Table(date_data, colWidths=[26*cm])
+    date_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    elements.append(date_table)
+    elements.append(Spacer(1, 0.5*cm))
+
+    # Genel Özet başlık
+    section_data = [['GENEL OZET']]
+    section_table = Table(section_data, colWidths=[26*cm])
+    section_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#059669')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 14),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(section_table)
+    elements.append(Spacer(1, 0.3*cm))
+
+    total_malzeme = combined_df['Malzeme Fiyatı'].sum()
+    total_iscilik = combined_df['İşçilik Fiyatı'].sum()
+    total_ggk = combined_df['GGK Fiyatı'].sum()
+    total_genel = combined_df['Genel Toplam'].sum()
+
+    summary_data = [
+        ['Kategori', 'Tutar (TL)', 'Yuzde (%)'],
+        ['Toplam Malzeme', f'{total_malzeme:,.2f}', f'{(total_malzeme/total_genel*100):.2f}%'],
+        ['Toplam Iscilik', f'{total_iscilik:,.2f}', f'{(total_iscilik/total_genel*100):.2f}%'],
+        ['Toplam GGK', f'{total_ggk:,.2f}', f'{(total_ggk/total_genel*100):.2f}%'],
+        ['GENEL TOPLAM', f'{total_genel:,.2f}', '100.00%']
+    ]
+
+    summary_table = Table(summary_data, colWidths=[8*cm, 6*cm, 4*cm])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7c3aed')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#fecaca')),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#dc2626')),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 12),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -2), [colors.white, colors.lightgrey]),
+    ]))
+
+    elements.append(summary_table)
+    elements.append(Spacer(1, 1*cm))
+
+    # Ürün Gruplarına Göre Detaylı Analiz
+    section_data2 = [['URUN GRUPLARINA GORE DETAYLI ANALIZ']]
+    section_table2 = Table(section_data2, colWidths=[26*cm])
+    section_table2.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#059669')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 14),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(section_table2)
+    elements.append(Spacer(1, 0.3*cm))
+
+    # Tüm verileri gruplandır
+    grouped = combined_df.groupby('Ürün Grubu').agg({
+        'Malzeme Fiyatı': 'sum',
+        'İşçilik Fiyatı': 'sum',
+        'GGK Fiyatı': 'sum',
+        'Genel Toplam': 'sum',
+        'Sayfa': 'count'  # Kayıt sayısını say
+    }).reset_index()
+
+    # Sütun adını değiştir
+    grouped.rename(columns={'Sayfa': 'Bulunan Kayıt Sayısı'}, inplace=True)
+
+    grouped = grouped.sort_values('Genel Toplam', ascending=False)
+    grouped['Genel Toplam %'] = (grouped['Genel Toplam'] / grouped['Genel Toplam'].sum() * 100)
+    grouped['Kümülatif Genel %'] = grouped['Genel Toplam %'].cumsum()
+
+    # Ana tablo verileri - Kısa başlıklar
+    main_table_data = [['Urun Grubu', 'G.Toplam', 'G.Top %', 'Kum %',
+                        'Malzeme', 'Mlz %', 'Iscilik', 'Isc %',
+                        'GGK', 'GGK %', 'Adet']]
+
+    for _, row in grouped.iterrows():
+        main_table_data.append([
+            turkce_ascii(str(row['Ürün Grubu']))[:25],  # Kısa isim
+            f"{row['Genel Toplam']:,.0f}",
+            f"{row['Genel Toplam %']:.1f}%",
+            f"{row['Kümülatif Genel %']:.1f}%",
+            f"{row['Malzeme Fiyatı']:,.0f}",
+            f"{(row['Malzeme Fiyatı']/row['Genel Toplam']*100):.1f}%",
+            f"{row['İşçilik Fiyatı']:,.0f}",
+            f"{(row['İşçilik Fiyatı']/row['Genel Toplam']*100):.1f}%",
+            f"{row['GGK Fiyatı']:,.0f}",
+            f"{(row['GGK Fiyatı']/row['Genel Toplam']*100):.1f}%",
+            f"{int(row['Bulunan Kayıt Sayısı'])}"
+        ])
+
+    # Tablo genişlikleri - Daha dengeli dağılım
+    col_widths = [4.2*cm, 2.4*cm, 1.9*cm, 1.8*cm, 2.4*cm, 1.6*cm, 2.4*cm, 1.6*cm, 2.4*cm, 1.6*cm, 1.8*cm]
+
+    main_table = Table(main_table_data, colWidths=col_widths, repeatRows=1)
+    main_table.setStyle(TableStyle([
+        # Başlık satırı
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7c3aed')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+        ('TOPPADDING', (0, 1), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ('WORDWRAP', (0, 0), (-1, -1), True),
+        # Genel Toplam sütunları vurgula
+        ('BACKGROUND', (1, 1), (3, -1), colors.HexColor('#fecaca')),
+        ('TEXTCOLOR', (1, 1), (3, -1), colors.HexColor('#dc2626')),
+        ('FONTNAME', (1, 1), (3, -1), 'Helvetica-Bold'),
+        # Malzeme sütunları
+        ('BACKGROUND', (4, 1), (5, -1), colors.HexColor('#d1fae5')),
+        ('TEXTCOLOR', (4, 1), (5, -1), colors.HexColor('#047857')),
+        # İşçilik sütunları
+        ('BACKGROUND', (6, 1), (7, -1), colors.HexColor('#dbeafe')),
+        ('TEXTCOLOR', (6, 1), (7, -1), colors.HexColor('#1e40af')),
+        # GGK sütunları
+        ('BACKGROUND', (8, 1), (9, -1), colors.HexColor('#e9d5ff')),
+        ('TEXTCOLOR', (8, 1), (9, -1), colors.HexColor('#7c3aed')),
+    ]))
+
+    elements.append(main_table)
+    elements.append(PageBreak())
+
+    # Her ürün grubu için detaylı sayfa
+    for _, group_row in grouped.iterrows():
+        urun_grubu = group_row['Ürün Grubu']
+
+        # Ürün grubu başlığı
+        group_title_data = [[f"URUN GRUBU DETAYI: {turkce_ascii(str(urun_grubu))}"]]
+        group_title_table = Table(group_title_data, colWidths=[26*cm])
+        group_title_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#059669')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 14),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(group_title_table)
+        elements.append(Spacer(1, 0.3*cm))
+
+        # Bu ürün grubuna ait tüm kayıtları getir
+        group_df = combined_df[combined_df['Ürün Grubu'] == urun_grubu].copy()
+
+        # Özet bilgiler
+        group_summary_data = [
+            ['Metrik', 'Deger'],
+            ['Toplam Kayit Sayisi', f"{len(group_df)}"],
+            ['Toplam Maliyet', f"{group_row['Genel Toplam']:,.2f} TL"],
+            ['Malzeme Maliyeti', f"{group_row['Malzeme Fiyatı']:,.2f} TL ({(group_row['Malzeme Fiyatı']/group_row['Genel Toplam']*100):.1f}%)"],
+            ['Iscilik Maliyeti', f"{group_row['İşçilik Fiyatı']:,.2f} TL ({(group_row['İşçilik Fiyatı']/group_row['Genel Toplam']*100):.1f}%)"],
+            ['GGK Maliyeti', f"{group_row['GGK Fiyatı']:,.2f} TL ({(group_row['GGK Fiyatı']/group_row['Genel Toplam']*100):.1f}%)"],
+        ]
+
+        group_summary_table = Table(group_summary_data, colWidths=[8*cm, 10*cm])
+        group_summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#7c3aed')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+
+        elements.append(group_summary_table)
+        elements.append(Spacer(1, 0.5*cm))
+
+        # Detaylı kayıt tablosu (ilk 50 kayıt)
+        detail_title_data = [[f"Detayli Kayitlar (Ilk {min(50, len(group_df))} Kayit)"]]
+        detail_title_table = Table(detail_title_data, colWidths=[26*cm])
+        detail_title_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#7c3aed')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        elements.append(detail_title_table)
+        elements.append(Spacer(1, 0.2*cm))
+
+        detail_data = [['Sayfa', 'Satir', 'Malzeme (TL)', 'Iscilik (TL)', 'GGK (TL)', 'Genel Toplam (TL)']]
+
+        for idx, (_, row) in enumerate(group_df.head(50).iterrows()):
+            detail_data.append([
+                turkce_ascii(str(row.get('Sayfa', ''))),
+                str(row.get('Satır', '')),
+                f"{row['Malzeme Fiyatı']:,.2f}",
+                f"{row['İşçilik Fiyatı']:,.2f}",
+                f"{row['GGK Fiyatı']:,.2f}",
+                f"{row['Genel Toplam']:,.2f}"
+            ])
+
+        detail_table = Table(detail_data, colWidths=[3*cm, 3*cm, 4*cm, 4*cm, 4*cm, 4.5*cm])
+        detail_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#6b21a8')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+
+        elements.append(detail_table)
+
+        if len(group_df) > 50:
+            elements.append(Spacer(1, 0.3*cm))
+            note_data = [[f"Not: Bu urun grubunda toplam {len(group_df)} kayit bulunmaktadir. Ilk 50 kayit gosterilmistir."]]
+            note_table = Table(note_data, colWidths=[26*cm])
+            note_table.setStyle(TableStyle([
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Oblique'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.grey),
+            ]))
+            elements.append(note_table)
+
+        elements.append(PageBreak())
+
+    # PDF'i oluştur
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
 def main():
     st.markdown('<div class="main-title">📊 Excel Analiz Uygulaması</div>', unsafe_allow_html=True)
     st.markdown('<div class="info-card">Modern Excel analiz uygulaması ile dosyanızı yükleyip detaylı maliyet analizi yapın. Ürün grupları bazında karşılaştırmalar ve Pareto analizleri gerçekleştirin.</div>', unsafe_allow_html=True)
@@ -750,12 +1141,21 @@ def main():
                         st.sidebar.header("Maliyet Analizi - Sayfa Seçimi")
                         cost_analysis_sheets = []
 
-                        # İSKONTOLAR sayfasını hariç tut
-                        available_sheets = [s for s in sheet_names if s != "İSKONTOLAR"]
+                        # İSKONTOLAR ve Genel Gider Analiz sayfalarını hariç tut
+                        available_sheets = [s for s in sheet_names if s not in ["İSKONTOLAR", "Genel Gider Analiz"]]
 
                         for sheet in available_sheets:
                             if st.sidebar.checkbox(sheet, key=f"cost_sheet_{sheet}"):
                                 cost_analysis_sheets.append(sheet)
+
+                        # Genel Gider Analiz sayfası seçimi
+                        st.sidebar.markdown("---")
+                        st.sidebar.header("💰 Genel Gider Analiz")
+                        genel_gider_enabled = False
+                        if "Genel Gider Analiz" in sheet_names:
+                            genel_gider_enabled = st.sidebar.checkbox("Genel Gider Analiz", key="genel_gider_sheet")
+                        else:
+                            st.sidebar.warning("Genel Gider Analiz sayfası bulunamadı")
 
                         if cost_analysis_sheets:
                             # Tüm sayfalardan veriyi tek tabloda topla
@@ -890,6 +1290,7 @@ def main():
                                 </div>
                                 """, unsafe_allow_html=True)
 
+
                                 # Kolon bazlı renk kodu ekle
                                 st.markdown("""
                                 <style>
@@ -938,7 +1339,7 @@ def main():
                                     ">
                                         <div style="
                                             font-family: 'Segoe UI', 'Inter', sans-serif;
-                                            font-size: 15px;
+                                            font-size: 25.5px;
                                             font-weight: 800;
                                             color: #047857;
                                             text-transform: uppercase;
@@ -974,7 +1375,7 @@ def main():
                                     ">
                                         <div style="
                                             font-family: 'Segoe UI', 'Inter', sans-serif;
-                                            font-size: 15px;
+                                            font-size: 25.5px;
                                             font-weight: 800;
                                             color: #1e40af;
                                             text-transform: uppercase;
@@ -1010,7 +1411,7 @@ def main():
                                     ">
                                         <div style="
                                             font-family: 'Segoe UI', 'Inter', sans-serif;
-                                            font-size: 15px;
+                                            font-size: 25.5px;
                                             font-weight: 800;
                                             color: #7c3aed;
                                             text-transform: uppercase;
@@ -1044,7 +1445,7 @@ def main():
                                 ">
                                     <div style="
                                         font-family: 'Segoe UI', 'Inter', sans-serif;
-                                        font-size: 19px;
+                                        font-size: 32.3px;
                                         font-weight: 900;
                                         color: #dc2626;
                                         text-transform: uppercase;
@@ -1661,6 +2062,243 @@ def main():
                                 st.info("Veri bulunamadı.")
                         else:
                             st.info("👈 Maliyet analizi için yan panelden en az bir sayfa seçin.")
+
+                        # =====================================================
+                        # GENEL GİDER ANALİZ BÖLÜMÜ
+                        # =====================================================
+                        if genel_gider_enabled:
+                            st.markdown("---")
+                            st.markdown("""
+                            <div style="
+                                margin: 20px auto 40px auto;
+                                max-width: 1000px;
+                                padding: 45px 50px;
+                                background: linear-gradient(135deg, #059669, #10b981, #34d399);
+                                border: 5px solid #10b981;
+                                border-radius: 30px;
+                                text-align: center;
+                                box-shadow: 0 15px 40px rgba(16,185,129,0.4);
+                                position: relative;
+                                overflow: hidden;
+                            ">
+                                <div style="
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    right: 0;
+                                    height: 6px;
+                                    background: linear-gradient(90deg, #fbbf24, #f59e0b, #d97706);
+                                "></div>
+                                <div style="
+                                    font-family: 'Segoe UI', 'Inter', sans-serif;
+                                    font-size: 26px;
+                                    font-weight: 800;
+                                    color: #ffffff;
+                                    text-transform: uppercase;
+                                    letter-spacing: 2px;
+                                    text-shadow: 0 4px 10px rgba(0,0,0,0.6);
+                                    line-height: 1.1;
+                                ">💰 Genel Gider Analizi</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            try:
+                                # Para formatı fonksiyonu
+                                def format_currency_gider(value):
+                                    if pd.isna(value) or value == 0:
+                                        return "0,00 TL"
+                                    return f"{value:,.2f} TL".replace(",", "X").replace(".", ",").replace("X", ".")
+
+                                # Genel Gider Analiz sayfasını oku
+                                gider_df = pd.read_excel(uploaded_file, sheet_name="Genel Gider Analiz")
+
+                                # A: Kategori, B: Gider Adı, C: Maliyet
+                                if len(gider_df.columns) >= 3:
+                                    # Sütun isimlerini belirle
+                                    gider_df.columns = ['Kategori', 'Gider Adı', 'Maliyet'] + list(gider_df.columns[3:])
+
+                                    # Sadece maliyet değeri olan satırları filtrele
+                                    gider_df_filtered = gider_df[pd.to_numeric(gider_df['Maliyet'], errors='coerce').notna()].copy()
+                                    gider_df_filtered['Maliyet'] = pd.to_numeric(gider_df_filtered['Maliyet'], errors='coerce')
+
+                                    # Sıfır ve negatif maliyetleri de filtrele
+                                    gider_df_filtered = gider_df_filtered[gider_df_filtered['Maliyet'] > 0]
+
+                                    if len(gider_df_filtered) > 0:
+                                        # Toplam maliyet
+                                        toplam_gider_maliyet = gider_df_filtered['Maliyet'].sum()
+
+                                        # Yüzdelik hesapla
+                                        gider_df_filtered['Maliyet %'] = (gider_df_filtered['Maliyet'] / toplam_gider_maliyet * 100).round(2)
+
+                                        # Maliyete göre sırala (büyükten küçüğe)
+                                        gider_df_sorted = gider_df_filtered.sort_values('Maliyet', ascending=False).reset_index(drop=True)
+
+                                        # Kümülatif yüzde hesapla
+                                        gider_df_sorted['Kümülatif %'] = gider_df_sorted['Maliyet %'].cumsum().round(2)
+
+                                        # İstatistikler
+                                        col1, col2, col3, col4 = st.columns(4)
+
+                                        with col1:
+                                            st.markdown(f"""
+                                            <div style="background: linear-gradient(135deg, #10b981, #059669); padding: 20px; border-radius: 15px; text-align: center; color: white;">
+                                                <div style="font-size: 14px; opacity: 0.9;">Toplam Maliyet</div>
+                                                <div style="font-size: 24px; font-weight: 800;">{format_currency_gider(toplam_gider_maliyet)}</div>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+
+                                        with col2:
+                                            st.markdown(f"""
+                                            <div style="background: linear-gradient(135deg, #3b82f6, #1e40af); padding: 20px; border-radius: 15px; text-align: center; color: white;">
+                                                <div style="font-size: 14px; opacity: 0.9;">Gider Kalemi Sayısı</div>
+                                                <div style="font-size: 24px; font-weight: 800;">{len(gider_df_sorted)}</div>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+
+                                        with col3:
+                                            max_gider = gider_df_sorted.iloc[0]
+                                            max_gider_adi = str(max_gider['Gider Adı'])[:30] if pd.notna(max_gider['Gider Adı']) else ''
+                                            st.markdown(f"""
+                                            <div style="background: linear-gradient(135deg, #ef4444, #dc2626); padding: 20px; border-radius: 15px; text-align: center; color: white;">
+                                                <div style="font-size: 14px; opacity: 0.9;">En Yüksek Gider</div>
+                                                <div style="font-size: 18px; font-weight: 800;">{format_currency_gider(max_gider['Maliyet'])}</div>
+                                                <div style="font-size: 12px; opacity: 0.8;">{max_gider_adi}</div>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+
+                                        with col4:
+                                            min_gider = gider_df_sorted.iloc[-1]
+                                            min_gider_adi = str(min_gider['Gider Adı'])[:30] if pd.notna(min_gider['Gider Adı']) else ''
+                                            st.markdown(f"""
+                                            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 20px; border-radius: 15px; text-align: center; color: white;">
+                                                <div style="font-size: 14px; opacity: 0.9;">En Düşük Gider</div>
+                                                <div style="font-size: 18px; font-weight: 800;">{format_currency_gider(min_gider['Maliyet'])}</div>
+                                                <div style="font-size: 12px; opacity: 0.8;">{min_gider_adi}</div>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+
+                                        st.markdown("<br>", unsafe_allow_html=True)
+
+                                        # ===== KATEGORİYE GÖRE ANALİZ =====
+                                        render_subsection_heading("Kategoriye Göre Gider Dağılımı", icon="📁")
+
+                                        # Kategoriye göre grupla
+                                        kategori_grouped = gider_df_sorted.groupby('Kategori').agg({
+                                            'Maliyet': 'sum',
+                                            'Gider Adı': 'count'
+                                        }).reset_index()
+                                        kategori_grouped.columns = ['Kategori', 'Toplam Maliyet', 'Gider Sayısı']
+                                        kategori_grouped['Maliyet %'] = (kategori_grouped['Toplam Maliyet'] / toplam_gider_maliyet * 100).round(2)
+                                        kategori_grouped = kategori_grouped.sort_values('Toplam Maliyet', ascending=False)
+                                        kategori_grouped['Kümülatif %'] = kategori_grouped['Maliyet %'].cumsum().round(2)
+
+                                        col_chart1, col_chart2 = st.columns(2)
+
+                                        with col_chart1:
+                                            # Pasta grafik - Kategori dağılımı
+                                            fig_pie_gider = px.pie(
+                                                kategori_grouped,
+                                                values='Toplam Maliyet',
+                                                names='Kategori',
+                                                title='Kategorilere Göre Maliyet Dağılımı',
+                                                color_discrete_sequence=px.colors.qualitative.Set2
+                                            )
+                                            fig_pie_gider.update_traces(textposition='inside', textinfo='percent+label')
+                                            fig_pie_gider.update_layout(height=400)
+                                            st.plotly_chart(fig_pie_gider, use_container_width=True)
+
+                                        with col_chart2:
+                                            # Bar grafik - Kategori maliyetleri
+                                            fig_bar_kat = px.bar(
+                                                kategori_grouped,
+                                                x='Kategori',
+                                                y='Toplam Maliyet',
+                                                title='Kategorilere Göre Toplam Maliyet',
+                                                color='Maliyet %',
+                                                color_continuous_scale='Greens',
+                                                text='Maliyet %'
+                                            )
+                                            fig_bar_kat.update_traces(texttemplate='%{text:.1f}%', textposition='outside')
+                                            fig_bar_kat.update_layout(height=400, xaxis_tickangle=45)
+                                            st.plotly_chart(fig_bar_kat, use_container_width=True)
+
+                                        # Kategori tablosu
+                                        st.markdown("**Kategori Özet Tablosu:**")
+                                        kategori_display = kategori_grouped.copy()
+                                        kategori_display['Toplam Maliyet'] = kategori_display['Toplam Maliyet'].apply(format_currency_gider)
+                                        kategori_display['Maliyet %'] = kategori_display['Maliyet %'].apply(lambda x: f"%{x:.2f}")
+                                        kategori_display['Kümülatif %'] = kategori_display['Kümülatif %'].apply(lambda x: f"%{x:.2f}")
+                                        st.dataframe(kategori_display, use_container_width=True, hide_index=True)
+
+                                        st.markdown("<br>", unsafe_allow_html=True)
+
+                                        # ===== GİDER ADINA GÖRE DETAYLI ANALİZ =====
+                                        render_subsection_heading("Gider Kalemine Göre Detaylı Analiz", icon="📋")
+
+                                        # En yüksekten en düşüğe sıralı tablo
+                                        gider_display = gider_df_sorted[['Kategori', 'Gider Adı', 'Maliyet', 'Maliyet %', 'Kümülatif %']].copy()
+                                        gider_display['Maliyet'] = gider_df_sorted['Maliyet'].apply(format_currency_gider)
+                                        gider_display['Maliyet %'] = gider_df_sorted['Maliyet %'].apply(lambda x: f"%{x:.2f}")
+                                        gider_display['Kümülatif %'] = gider_df_sorted['Kümülatif %'].apply(lambda x: f"%{x:.2f}")
+
+                                        st.dataframe(gider_display, use_container_width=True, hide_index=True, height=400)
+
+                                        # Pareto grafiği
+                                        st.markdown("<br>", unsafe_allow_html=True)
+                                        render_subsection_heading("Gider Pareto Analizi (80/20)", icon="📊")
+
+                                        # Pareto için veri hazırla
+                                        pareto_gider = gider_df_sorted.head(20).copy()  # İlk 20 kalem
+
+                                        fig_pareto_gider = px.bar(
+                                            pareto_gider,
+                                            x='Gider Adı',
+                                            y='Maliyet',
+                                            title='Gider Kalemleri - Pareto Analizi (İlk 20)',
+                                            color='Kümülatif %',
+                                            color_continuous_scale='RdYlGn_r',
+                                            hover_data=['Kategori', 'Maliyet %', 'Kümülatif %']
+                                        )
+                                        fig_pareto_gider.update_layout(
+                                            xaxis_tickangle=45,
+                                            height=500,
+                                            margin=dict(l=60, r=60, t=80, b=150)
+                                        )
+                                        st.plotly_chart(fig_pareto_gider, use_container_width=True)
+
+                                        # 80/20 analiz sonucu
+                                        items_80_gider = len(gider_df_sorted[gider_df_sorted['Kümülatif %'] <= 80])
+                                        if items_80_gider > 0:
+                                            st.info(f"📈 **80/20 Analizi:** Toplam giderlerin %80'i **{items_80_gider} kalem** tarafından oluşturuluyor. (Toplam {len(gider_df_sorted)} kalem)")
+                                        else:
+                                            st.info("📈 **80/20 Analizi:** İlk kalem zaten %80'in üzerinde maliyet oluşturuyor.")
+
+                                        # En yüksek ve en düşük 5 gider
+                                        col_top, col_bottom = st.columns(2)
+
+                                        with col_top:
+                                            st.markdown("**🔴 En Yüksek 5 Gider:**")
+                                            top5 = gider_df_sorted.head(5)[['Kategori', 'Gider Adı', 'Maliyet', 'Maliyet %']].copy()
+                                            top5['Maliyet'] = gider_df_sorted.head(5)['Maliyet'].apply(format_currency_gider)
+                                            top5['Maliyet %'] = gider_df_sorted.head(5)['Maliyet %'].apply(lambda x: f"%{x:.2f}")
+                                            st.dataframe(top5, use_container_width=True, hide_index=True)
+
+                                        with col_bottom:
+                                            st.markdown("**🟢 En Düşük 5 Gider:**")
+                                            bottom5 = gider_df_sorted.tail(5)[['Kategori', 'Gider Adı', 'Maliyet', 'Maliyet %']].copy()
+                                            bottom5['Maliyet'] = gider_df_sorted.tail(5)['Maliyet'].apply(format_currency_gider)
+                                            bottom5['Maliyet %'] = gider_df_sorted.tail(5)['Maliyet %'].apply(lambda x: f"%{x:.2f}")
+                                            st.dataframe(bottom5, use_container_width=True, hide_index=True)
+
+                                    else:
+                                        st.warning("⚠️ Genel Gider Analiz sayfasında maliyet değeri olan satır bulunamadı.")
+                                else:
+                                    st.error("❌ Genel Gider Analiz sayfası en az 3 sütun içermelidir (Kategori, Gider Adı, Maliyet).")
+
+                            except Exception as e:
+                                st.error(f"❌ Genel Gider Analiz sayfası okunurken hata: {str(e)}")
+
                     else:
                         st.info("Ürün grupları listesi oluşturulamadı.")
 

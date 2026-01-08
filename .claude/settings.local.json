@@ -6,7 +6,18 @@
       "Bash(powershell:*)",
       "Bash(dir:*)",
       "Bash(where python)",
-      "Bash(streamlit --version)"
+      "Bash(streamlit --version)",
+      "Bash(pip install:*)",
+      "Bash(streamlit run:*)",
+      "Bash(.venv\\\\Scripts\\\\activate.bat)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m streamlit run excel_analyzer.py)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m streamlit run excel_analyzer.py --server.port 8502)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m pip install reportlab)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m pip install matplotlib)",
+      "Bash(\".venv\\\\Scripts\\\\python.exe\" -m streamlit run excel_analyzer.py --server.port 8503)"
     ],
     "deny": [],
     "ask": []
