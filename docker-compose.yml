@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: excel-analyzer
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    command: >
+      streamlit run excel_analyzer.py
+      --server.address=0.0.0.0
+      --server.port=8501
+      --server.headless=true
+      --server.runOnSave=true
+      --server.fileWatcherType=poll
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .git/
+            - .venv/
+            - venv/
+            - __pycache__/
+            - dist/
+    restart: unless-stopped

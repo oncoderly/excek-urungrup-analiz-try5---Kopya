@@ -1,0 +1,14 @@
+.git
+.gitignore
+.idea
+.devcontainer
+.claude
+.streamlit
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.log
+dist
