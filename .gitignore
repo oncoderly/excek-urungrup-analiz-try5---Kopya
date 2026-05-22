@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.log
+
+# Local runtime/debug output
+boq_debug_latest.csv
+teklif_hafiza_*.csv
+
+# Local environments and build output
+.venv/
+venv/
+dist/
