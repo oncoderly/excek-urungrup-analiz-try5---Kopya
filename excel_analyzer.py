@@ -1270,6 +1270,7 @@ def write_customer_boq_debug_outputs(
         (
             "Column Config: "
             f"Urun Aciklamasi={index_to_excel_column(column_config['urun_aciklama'])}, "
+            f"Miktar={index_to_excel_column(column_config['miktar']) if column_config.get('miktar') is not None else '-'}, "
             f"Malzeme={index_to_excel_column(column_config['malzeme'])}, "
             f"Iscilik={index_to_excel_column(column_config['iscilik'])}, "
             f"GGK={index_to_excel_column(column_config['ggk'])}, "
@@ -1509,7 +1510,7 @@ def should_skip_boq_description(description):
             return True
     return False
 
-def classify_customer_boq_row(description, excel_total, calculated_total):
+def classify_customer_boq_row(description, excel_total, calculated_total, miktar=None):
     clean_description = str(description or "").strip()
     has_excel_total = abs(float(excel_total or 0.0)) > 0
     has_calculated_total = abs(float(calculated_total or 0.0)) > 0
@@ -1518,6 +1519,9 @@ def classify_customer_boq_row(description, excel_total, calculated_total):
         return "Boş"
     if should_skip_boq_description(clean_description):
         return "Toplam/Başlık"
+    # Miktar kolonu seçildiyse, miktarı olmayan tutarlı satırlar ara toplamdır
+    if miktar is not None and abs(float(miktar)) == 0 and (has_excel_total or has_calculated_total):
+        return "Ara Toplam (Miktarsız)"
     if not clean_description and (has_excel_total or has_calculated_total):
         return "Açıklama Eksik"
     if clean_description and not has_excel_total and not has_calculated_total:
@@ -1532,9 +1536,11 @@ def build_customer_boq_memory_table(
     iscilik_col_index,
     ggk_col_index,
     genel_toplam_col_index,
+    miktar_col_index=None,
 ):
     selected_indices = [
         urun_aciklama_col_index,
+        miktar_col_index,
         malzeme_col_index,
         iscilik_col_index,
         ggk_col_index,
@@ -1567,6 +1573,7 @@ def build_customer_boq_memory_table(
 
         for idx, row in df.iterrows():
             try:
+                miktar = read_boq_numeric_cell(row, miktar_col_index) if miktar_col_index is not None else None
                 malzeme_fiyati = read_boq_numeric_cell(row, malzeme_col_index)
                 iscilik_fiyati = read_boq_numeric_cell(row, iscilik_col_index)
                 ggk_fiyati = read_boq_numeric_cell(row, ggk_col_index)
@@ -1581,6 +1588,7 @@ def build_customer_boq_memory_table(
                     urun_aciklamasi,
                     excel_genel_toplam,
                     hesaplanan_satir_toplami,
+                    miktar,
                 )
 
                 if abs(excel_genel_toplam) > 0 or abs(hesaplanan_satir_toplami) > 0:
@@ -1606,6 +1614,7 @@ def build_customer_boq_memory_table(
                         "Ürün Açıklaması": urun_aciklamasi,
                         "Açıklama Kaynağı": aciklama_kaynagi,
                         "Açıklama Kolonu": index_to_excel_column(aciklama_col_index),
+                        "Miktar": miktar if miktar is not None else 0.0,
                         "Malzeme Fiyatı": malzeme_fiyati,
                         "İşçilik Fiyatı": iscilik_fiyati,
                         "GGK Fiyatı": ggk_fiyati,
@@ -1640,6 +1649,7 @@ def render_customer_boq_analysis(
     iscilik_col_index,
     ggk_col_index,
     genel_toplam_col_index,
+    miktar_col_index=None,
 ):
     render_cost_analysis_page_styles()
 
@@ -1652,6 +1662,7 @@ def render_customer_boq_analysis(
             escape(str(uploaded_file.name)),
             f"{len(selected_sheets)} seçili sayfa",
             f"Açıklama: {index_to_excel_column(urun_aciklama_col_index)}",
+            f"Miktar: {index_to_excel_column(miktar_col_index) if miktar_col_index is not None else 'Seçilmedi'}",
             f"Toplam: {index_to_excel_column(genel_toplam_col_index)}",
         ],
     )
@@ -1668,6 +1679,7 @@ def render_customer_boq_analysis(
         iscilik_col_index=iscilik_col_index,
         ggk_col_index=ggk_col_index,
         genel_toplam_col_index=genel_toplam_col_index,
+        miktar_col_index=miktar_col_index,
     )
 
     if issues:
@@ -1702,6 +1714,7 @@ def render_customer_boq_analysis(
             f"Genel toplam için seçilen {index_to_excel_column(genel_toplam_col_index)} kolonu kullanılıyor. "
             f"Veri: {row_type_counts.get('Veri', 0)} | "
             f"Toplam/Başlık: {row_type_counts.get('Toplam/Başlık', 0)} | "
+            f"Ara Toplam (Miktarsız): {row_type_counts.get('Ara Toplam (Miktarsız)', 0)} | "
             f"Açıklama Eksik: {row_type_counts.get('Açıklama Eksik', 0)} | "
             f"Metin: {row_type_counts.get('Metin', 0)}"
         ),
@@ -1718,6 +1731,7 @@ def render_customer_boq_analysis(
         selected_sheets=selected_sheets,
         column_config={
             "urun_aciklama": urun_aciklama_col_index,
+            "miktar": miktar_col_index,
             "malzeme": malzeme_col_index,
             "iscilik": iscilik_col_index,
             "ggk": ggk_col_index,
@@ -1758,6 +1772,7 @@ def render_customer_boq_analysis(
                     "Ürün Açıklaması",
                     "Açıklama Kaynağı",
                     "Açıklama Kolonu",
+                    "Miktar",
                     "Malzeme Fiyatı",
                     "İşçilik Fiyatı",
                     "GGK Fiyatı",
@@ -2084,10 +2099,14 @@ def main():
 
     # Sidebar
     st.sidebar.markdown('<div class="sidebar-section-title">Dosya Yükleme</div>', unsafe_allow_html=True)
+    st.sidebar.markdown(
+        '<div class="upload-hint">Excel dosyanızı bu alana sürükleyip bırakabilir veya Browse files butonuyla seçebilirsiniz.</div>',
+        unsafe_allow_html=True
+    )
     uploaded_file = st.sidebar.file_uploader(
-        "Excel dosyanızı seçin",
+        "Excel dosyanızı sürükleyip bırakın veya seçin",
         type=['xlsx', 'xls'],
-        help="Desteklenen formatlar: .xlsx, .xls"
+        help="Desteklenen formatlar: .xlsx, .xls. Dosyayı kutunun üzerine sürükleyip bırakarak da yükleyebilirsiniz."
     )
 
     if uploaded_file is not None:
@@ -2160,6 +2179,7 @@ def main():
             ggk_col_index = 29            # AD
             genel_toplam_col_index = 31   # AF
             boq_urun_aciklama_col_index = urun_aciklama_col_index
+            boq_miktar_col_index = None
             boq_malzeme_col_index = malzeme_col_index
             boq_iscilik_col_index = iscilik_col_index
             boq_ggk_col_index = ggk_col_index
@@ -2334,6 +2354,14 @@ def main():
                             format_func=format_column_option,
                             key=f"boq_urun_aciklama_col_selector_{column_selector_scope}"
                         )
+                        boq_miktar_col_index = st.sidebar.selectbox(
+                            "Miktar kolonu",
+                            options=optional_indices,
+                            index=find_optional_column_index(["MİKTAR", "MIKTAR", "QTY", "QUANTITY"]),
+                            format_func=format_optional_column_option,
+                            key=f"boq_miktar_col_selector_{column_selector_scope}",
+                            help="Seçilirse yalnızca miktarı dolu satırlar toplanır; miktarı boş ara toplam satırları çift sayılmaz."
+                        )
                         boq_malzeme_col_index = st.sidebar.selectbox(
                             "Malzeme Fiyatı kolonu",
                             options=option_indices,
@@ -2490,11 +2518,15 @@ def main():
             if page_mode == "Fiyat Revizyon Kıyas":
                 st.sidebar.markdown("---")
                 st.sidebar.markdown('<div class="sidebar-section-title">Kıyas Dosyası</div>', unsafe_allow_html=True)
+                st.sidebar.markdown(
+                    '<div class="upload-hint">Eski fiyat dosyasını buraya sürükleyip bırakabilir veya Browse files ile seçebilirsiniz.</div>',
+                    unsafe_allow_html=True
+                )
                 old_price_file = st.sidebar.file_uploader(
-                    "Eski fiyat çalışması dosyası",
+                    "Eski fiyat çalışması dosyasını sürükleyip bırakın veya seçin",
                     type=['xlsx', 'xls'],
                     key="old_price_file_uploader",
-                    help="Mevcut yüklenen dosya 'yeni fiyat', bu dosya 'eski fiyat' olarak kıyaslanır."
+                    help="Mevcut yüklenen dosya 'yeni fiyat', bu dosya 'eski fiyat' olarak kıyaslanır. Dosyayı kutunun üzerine sürükleyip bırakarak da yükleyebilirsiniz."
                 )
 
             if page_mode == "Fiyat Revizyon Kıyas":
@@ -2533,6 +2565,7 @@ def main():
                     uploaded_file=uploaded_file,
                     selected_sheets=cost_analysis_sheets,
                     urun_aciklama_col_index=boq_urun_aciklama_col_index,
+                    miktar_col_index=boq_miktar_col_index,
                     malzeme_col_index=boq_malzeme_col_index,
                     iscilik_col_index=boq_iscilik_col_index,
                     ggk_col_index=boq_ggk_col_index,

@@ -83,6 +83,100 @@ def apply_global_styles(st):
         font-size: 14px;
         font-weight: 700;
     }
+
+    .upload-hint {
+        margin: 0 0 8px 0;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px dashed #93c5fd;
+        background: #eff6ff;
+        color: #1e40af;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.35;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+        min-height: 112px;
+        padding: 14px 12px !important;
+        border: 2px dashed #60a5fa !important;
+        border-radius: 12px !important;
+        background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, transform 0.2s ease !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]::before {
+        content: "" !important;
+        position: absolute !important;
+        inset: 6px !important;
+        border: 2px dashed rgba(37, 99, 235, 0.55) !important;
+        border-radius: 10px !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: scale(0.96) !important;
+        transition: opacity 0.2s ease, transform 0.2s ease !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]::after {
+        content: "Buraya bırakın" !important;
+        position: absolute !important;
+        inset: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(219, 234, 254, 0.88) !important;
+        color: #1d4ed8 !important;
+        font-size: 15px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateY(6px) !important;
+        transition: opacity 0.18s ease, transform 0.18s ease !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:hover,
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:focus-within {
+        border-color: #2563eb !important;
+        background: #dbeafe !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 10px 24px rgba(37, 99, 235, 0.18) !important;
+        transform: translateY(-1px) !important;
+        animation: upload-dropzone-pulse 0.9s ease-in-out infinite !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:hover::before,
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:focus-within::before {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:hover::after,
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"]:focus-within::after {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+    }
+
+    [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {
+        border-radius: 9px !important;
+        border: 1px solid #2563eb !important;
+        background: #2563eb !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+    }
+
+    @keyframes upload-dropzone-pulse {
+        0% {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 10px 24px rgba(37, 99, 235, 0.16);
+        }
+        50% {
+            box-shadow: 0 0 0 7px rgba(37, 99, 235, 0.18), 0 14px 30px rgba(37, 99, 235, 0.24);
+        }
+        100% {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 10px 24px rgba(37, 99, 235, 0.16);
+        }
+    }
     
     /* Premium AgGrid tabloları için gelişmiş başlık tasarımı */
     .ag-theme-material .ag-header {
